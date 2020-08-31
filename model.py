@@ -16,8 +16,8 @@ class LowFER(nn.Module):
         #                             dtype=torch.float, device="cuda", requires_grad=True))
         # self.V = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d2, k * o)),
         #                             dtype=torch.float, device="cuda", requires_grad=True))
-        self.U = nn.Linear(d1, k*o, bias=False)
-        self.V = nn.Linear(d2, k*o, bias=False)
+        self.U = nn.Linear(d1, k*o, bias=False).cuda()
+        self.V = nn.Linear(d2, k*o, bias=False).cuda()
         self.input_dropout = nn.Dropout(kwargs["input_dropout"])
         self.hidden_dropout1 = nn.Dropout(kwargs["hidden_dropout1"])
         self.hidden_dropout2 = nn.Dropout(kwargs["hidden_dropout2"])
