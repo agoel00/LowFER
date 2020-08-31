@@ -30,8 +30,8 @@ class LowFER(nn.Module):
     def init(self):
         nn.init.xavier_normal_(self.E.weight.data)
         nn.init.xavier_normal_(self.R.weight.data)
-        nn.init.uniform_(self.U, -1, 1)
-        nn.init.uniform_(self.V, -1, 1)
+        nn.init.uniform_(self.U.weight, -1, 1)
+        nn.init.uniform_(self.V.weight, -1, 1)
         geotorch.orthogonal(self.U, 'weight')
         geotorch.orthogonal(self.V, 'weight')
     
