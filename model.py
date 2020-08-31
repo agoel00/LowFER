@@ -16,8 +16,8 @@ class LowFER(nn.Module):
         #                             dtype=torch.float, device="cuda", requires_grad=True))
         # self.V = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d2, k * o)),
         #                             dtype=torch.float, device="cuda", requires_grad=True))
-        self.U = nn.Linear(d1, k*o, bias=False).cuda()
-        self.V = nn.Linear(d2, k*o, bias=False).cuda()
+        self.U = nn.Linear(d1, k*o, bias=False)
+        self.V = nn.Linear(d2, k*o, bias=False)
         self.input_dropout = nn.Dropout(kwargs["input_dropout"])
         self.hidden_dropout1 = nn.Dropout(kwargs["hidden_dropout1"])
         self.hidden_dropout2 = nn.Dropout(kwargs["hidden_dropout2"])
@@ -28,12 +28,15 @@ class LowFER(nn.Module):
         self.loss = nn.BCELoss()
     
     def init(self):
+        print('Init model params...')
         nn.init.xavier_normal_(self.E.weight.data)
         nn.init.xavier_normal_(self.R.weight.data)
         nn.init.uniform_(self.U.weight, -1, 1)
         nn.init.uniform_(self.V.weight, -1, 1)
         geotorch.orthogonal(self.U, 'weight')
         geotorch.orthogonal(self.V, 'weight')
+        self.U = self.U.cuda()
+        self.V = self.V.cuda()
     
     def forward(self, e1_idx, r_idx):
         e1 = self.E(e1_idx)
