@@ -33,8 +33,10 @@ class LowFER(nn.Module):
         nn.init.xavier_normal_(self.R.weight.data)
         nn.init.uniform_(self.U.weight, -1, 1)
         nn.init.uniform_(self.V.weight, -1, 1)
-        geotorch.orthogonal(self.U, 'weight')
-        geotorch.orthogonal(self.V, 'weight')
+        # geotorch.orthogonal(self.U, 'weight')
+        # geotorch.orthogonal(self.V, 'weight')
+        geotorch.fixed_rank(self.U, 'weight', self.k)
+        geotorch.fixed_rank(self.V, 'weight', self.k)
         self.U = self.U.cuda()
         self.V = self.V.cuda()
     
