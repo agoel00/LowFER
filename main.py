@@ -142,9 +142,15 @@ class Experiment:
         else:
            model.init()
         #https://discuss.pytorch.org/t/different-learning-rate-for-a-specific-layer/33670/4
-        manifold_params_list = ['U.weight', 'V.weight']
-        manifold_params = list(filter(lambda kv: kv[0] in manifold_params_list, model.named_parameters()))
-        base_params = list(filter(lambda kv: kv[0] not in manifold_params_list, model.named_parameters()))
+        manifold_list = ['U.weight', 'V.weight']
+        manifold_params_list = list(filter(lambda kv: kv[0] in manifold_list, model.named_parameters()))
+        base_params_list = list(filter(lambda kv: kv[0] not in manifold_list, model.named_parameters()))
+        manifold_params = []
+        base_params = []
+        for name, params in manifold_params_list:
+            manifold_params.append(params)
+        for name, params in base_params_list:
+            base_params.append(params)
         # opt = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
         opt = torch.optim.Adam(
             [{'params': base_params}, {'params': manifold_params, "lr": 0.00005}],
