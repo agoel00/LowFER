@@ -141,7 +141,15 @@ class Experiment:
            model.module.init()
         else:
            model.init()
-        opt = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
+        #https://discuss.pytorch.org/t/different-learning-rate-for-a-specific-layer/33670/4
+        manifold_params_list = ['U.weight', 'V.weight']
+        manifold_params = list(filter(lambda kv: kv[0] in manifold_params_list, model.named_parameters()))
+        base_params = list(filter(lambda kv: kv[0] not in manifold_params_list, model.named_parameters()))
+        # opt = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
+        opt = torch.optim.Adam(
+            [{'params': base_params}, {'params': manifold_params, "lr": 0.00005}],
+            lr=self.learning_rate
+        )
         if self.decay_rate:
             scheduler = ExponentialLR(opt, self.decay_rate)
         
