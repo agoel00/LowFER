@@ -3,6 +3,7 @@
 import numpy as np
 import torch.nn as nn
 import torch
+import geotorch
 
 class LowFER(nn.Module):
     def __init__(self, d, d1, d2, **kwargs):
@@ -11,13 +12,12 @@ class LowFER(nn.Module):
         self.E = nn.Embedding(len(d.entities), d1, padding_idx=0)
         self.R = nn.Embedding(len(d.relations), d2, padding_idx=0)
         k, o = kwargs.get('k', 30), d1
-        self.U = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d1, k * o)),
-                                    dtype=torch.float, device="cuda", requires_grad=True))
-        self.V = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d2, k * o)),
-                                    dtype=torch.float, device="cuda", requires_grad=True))
-        self.conv = nn.Conv2d(1, kwargs['conv_out'], (2,2), 1, 0, bias=True)
-        self.pool = nn.AvgPool1d(5, 50)
-        self.fc = nn.Linear(396, k*o)
+        # self.U = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d1, k * o)),
+        #                             dtype=torch.float, device="cuda", requires_grad=True))
+        # self.V = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d2, k * o)),
+        #                             dtype=torch.float, device="cuda", requires_grad=True))
+        self.U = nn.Linear(d1, k*o, bias=False)
+        self.V = nn.Linear(d2, k*o, bias=False)
         self.input_dropout = nn.Dropout(kwargs["input_dropout"])
         self.hidden_dropout1 = nn.Dropout(kwargs["hidden_dropout1"])
         self.hidden_dropout2 = nn.Dropout(kwargs["hidden_dropout2"])
@@ -33,6 +33,10 @@ class LowFER(nn.Module):
         nn.init.xavier_normal_(self.R.weight.data)
         nn.init.uniform_(self.U.weight, -1, 1)
         nn.init.uniform_(self.V.weight, -1, 1)
+        # geotorch.orthogonal(self.U, 'weight')
+        # geotorch.orthogonal(self.V, 'weight')
+        geotorch.fixed_rank(self.U, 'weight', self.k)
+        geotorch.fixed_rank(self.V, 'weight', self.k)
         self.U = self.U.cuda()
         self.V = self.V.cuda()
     
@@ -41,17 +45,9 @@ class LowFER(nn.Module):
         e1 = self.bn0(e1)
         e1 = self.input_dropout(e1)
         r = self.R(r_idx)
-
-        c = torch.cat([e1.view(-1, 1, 1, self.o), r.view(-1, 1, 1, self.o)], 2)
-        c = self.conv(c)
-        c = c.view(c.shape[0], 1, -1)
-        c = self.pool(c)
-        c = c.view(c.shape[0], -1)
-        c = self.fc(c)
-
         
         ## MFB
-        x = torch.mm(e1, self.U.weight.t()) * torch.mm(r, self.V.weight.t()) * c
+        x = torch.mm(e1, self.U.weight.t()) * torch.mm(r, self.V.weight.t())
         x = self.hidden_dropout1(x)
         x = x.view(-1, self.o, self.k)
         x = x.sum(-1)
