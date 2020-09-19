@@ -4,7 +4,6 @@ import numpy as np
 import torch.nn as nn
 import torch
 
-
 class LowFER(nn.Module):
     def __init__(self, d, d1, d2, **kwargs):
         super(LowFER, self).__init__()
@@ -12,14 +11,13 @@ class LowFER(nn.Module):
         self.E = nn.Embedding(len(d.entities), d1, padding_idx=0)
         self.R = nn.Embedding(len(d.relations), d2, padding_idx=0)
         k, o = kwargs.get('k', 30), d1
-        self.U1 = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d1, k * o)),
+        self.U = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d1, k * o)),
                                     dtype=torch.float, device="cuda", requires_grad=True))
-        self.V1 = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d2, k * o)),
+        self.V = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d2, k * o)),
                                     dtype=torch.float, device="cuda", requires_grad=True))
-        self.U2 = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d2, k * o)),
-                                    dtype=torch.float, device="cuda", requires_grad=True))
-        self.V2 = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (d2, k * o)),
-                                    dtype=torch.float, device="cuda", requires_grad=True))
+        self.conv = nn.Conv2d(1, 200, (2,2), 1, 0, bias=True)
+        self.pool = nn.AvgPool1d(100, 10)
+        self.fc = nn.Linear(1971, k*o)
         self.input_dropout = nn.Dropout(kwargs["input_dropout"])
         self.hidden_dropout1 = nn.Dropout(kwargs["hidden_dropout1"])
         self.hidden_dropout2 = nn.Dropout(kwargs["hidden_dropout2"])
@@ -30,17 +28,30 @@ class LowFER(nn.Module):
         self.loss = nn.BCELoss()
     
     def init(self):
+        print('Init model params...')
         nn.init.xavier_normal_(self.E.weight.data)
         nn.init.xavier_normal_(self.R.weight.data)
+        # nn.init.uniform_(self.U, -1, 1)
+        # nn.init.uniform_(self.V, -1, 1)
+        self.U = self.U.cuda()
+        self.V = self.V.cuda()
     
     def forward(self, e1_idx, r_idx):
         e1 = self.E(e1_idx)
         e1 = self.bn0(e1)
         e1 = self.input_dropout(e1)
         r = self.R(r_idx)
+
+        c = torch.cat([e1.view(-1, 1, 1, self.o), r.view(-1, 1, 1, self.o)], 2)
+        c = self.conv(c)
+        c = c.view(c.shape[0], 1, -1)
+        c = self.pool(c)
+        c = c.view(c.shape[0], -1)
+        c = self.fc(c)
+
         
         ## MFB
-        x = torch.mm(e1, self.U1) * torch.mm(e1, self.V1) * torch.mm(r, self.U2) * torch.mm(r, self.V2) 
+        x = torch.mm(e1, self.U) * torch.mm(r, self.V) * c
         x = self.hidden_dropout1(x)
         x = x.view(-1, self.o, self.k)
         x = x.sum(-1)
