@@ -18,7 +18,7 @@ logger = logging.getLogger(__file__)
 
 def add_logging_handlers(params, dir_name="logs"):
     os.makedirs(dir_name, exist_ok=True)
-    log_file = os.path.join(dir_name, params + "_crossattention.log")
+    log_file = os.path.join(dir_name, params + "_crossAttention_v2.log")
     fh = logging.FileHandler(log_file)
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s -   %(message)s', '%m/%d/%Y %H:%M:%S'))
     global logger
@@ -164,6 +164,10 @@ class Experiment:
         
         logger.info("Starting training...")
         logger.info("Params: %d", sum(p.numel() for p in model.parameters() if p.requires_grad))
+        for name, p in model.named_parameters():
+            logger.info(name)
+            logger.info(p.shape)
+            logger.info(p.numel())
         
         for it in range(1, self.num_iterations+1):
             start_train = time.time()
