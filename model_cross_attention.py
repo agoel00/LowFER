@@ -7,29 +7,30 @@ import torch.nn.functional as F
 
 
 class LowFER(nn.Module):
-    def __init__(self, d, d1, d2, **kwargs):
+    def __init__(self, d, d1, d2, input_dropout, hidden_dropout1, hidden_dropout2, k, subspace):
         super(LowFER, self).__init__()
         
         self.E = nn.Embedding(len(d.entities), d1, padding_idx=0)
         self.R = nn.Embedding(len(d.relations), d2, padding_idx=0)
-        k, o = kwargs.get('k', 30), d1
-        self.U1 = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (100, k * o)),
+        o = d1
+        self.subspace = subspace
+        self.U1 = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (self.subspace, k * o)),
                                     dtype=torch.float, device="cuda", requires_grad=True))
-        self.V1 = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (100, k * o)),
+        self.V1 = nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (self.subspace, k * o)),
                                     dtype=torch.float, device="cuda", requires_grad=True))
-        self.input_dropout = nn.Dropout(kwargs["input_dropout"])
-        self.hidden_dropout1 = nn.Dropout(kwargs["hidden_dropout1"])
-        self.hidden_dropout2 = nn.Dropout(kwargs["hidden_dropout2"])
+        self.input_dropout = nn.Dropout(input_dropout)
+        self.hidden_dropout1 = nn.Dropout(hidden_dropout1)
+        self.hidden_dropout2 = nn.Dropout(hidden_dropout2)
         self.bn0 = nn.BatchNorm1d(d1)
         self.bn1 = nn.BatchNorm1d(d1)
         self.k = k
         self.o = o
         self.loss = nn.BCELoss()
 
-        self.fc1 = nn.Linear(d1, 100)
-        self.fc2 = nn.Linear(d2, 100)
-        self.fc3 = nn.Linear(d1, 100)
-        self.fc4 = nn.Linear(d2, 100)
+        self.fc1 = nn.Linear(d1, self.subspace)
+        self.fc2 = nn.Linear(d2, self.subspace)
+        self.fc3 = nn.Linear(d1, self.subspace)
+        self.fc4 = nn.Linear(d2, self.subspace)
     
     def init(self):
         nn.init.xavier_normal_(self.E.weight.data)
@@ -43,8 +44,8 @@ class LowFER(nn.Module):
         
         e1_bar = F.relu(self.fc1(e1))
         r_bar = F.relu(self.fc2(r))
-        alpha_e1 = F.sigmoid(self.fc4(r))
-        alpha_r = F.sigmoid(self.fc3(e1))
+        alpha_e1 = torch.sigmoid(self.fc4(r))
+        alpha_r = torch.sigmoid(self.fc3(e1))
 
         e1_aug = e1_bar * alpha_e1
         r_aug = r_bar * alpha_r
