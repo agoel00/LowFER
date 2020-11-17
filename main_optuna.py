@@ -181,58 +181,63 @@ class Experiment:
         #     logger.info(p.numel())
         
         for it in range(1, self.num_iterations+1):
-            start_train = time.time()
-            model.train()    
-            losses = []
-            np.random.shuffle(er_vocab_pairs)
-            for j in range(0, len(er_vocab_pairs), self.batch_size):
-                data_batch, targets = self.get_batch(er_vocab, er_vocab_pairs, j)
-                opt.zero_grad()
-                e1_idx = torch.tensor(data_batch[:,0])
-                r_idx = torch.tensor(data_batch[:,1])  
-                if self.cuda:
-                    e1_idx = e1_idx.to(self.device)
-                    r_idx = r_idx.to(self.device)
-                predictions = model.forward(e1_idx, r_idx)           
-                if hasattr(model, 'module'):
-                    loss = model.module.loss(predictions, targets)
-                    loss = loss.mean()
-                else:
-                    loss = model.loss(predictions, targets)
-                loss.backward()
-                opt.step()
-                losses.append(loss.item())
-            if dr:
-                scheduler.step()
-            logger.info("Epoch %d / time %0.5f / loss %0.9f" % (it, time.time()-start_train, np.mean(losses)))
-            model.eval()
-            # if it % 50 == 0 and it != 0:
-            #     with torch.no_grad():
-            #         logger.info("Validation:")
-            #         valid_metrics = self.evaluate(model, d.valid_data)
-            
-            #     h1 = valid_metrics['h1']
+            try:
+                start_train = time.time()
+                model.train()    
+                losses = []
+                np.random.shuffle(er_vocab_pairs)
+                for j in range(0, len(er_vocab_pairs), self.batch_size):
+                    data_batch, targets = self.get_batch(er_vocab, er_vocab_pairs, j)
+                    opt.zero_grad()
+                    e1_idx = torch.tensor(data_batch[:,0])
+                    r_idx = torch.tensor(data_batch[:,1])  
+                    if self.cuda:
+                        e1_idx = e1_idx.to(self.device)
+                        r_idx = r_idx.to(self.device)
+                    predictions = model.forward(e1_idx, r_idx)           
+                    if hasattr(model, 'module'):
+                        loss = model.module.loss(predictions, targets)
+                        loss = loss.mean()
+                    else:
+                        loss = model.loss(predictions, targets)
+                    loss.backward()
+                    opt.step()
+                    losses.append(loss.item())
+                if dr:
+                    scheduler.step()
+                logger.info("Epoch %d / time %0.5f / loss %0.9f" % (it, time.time()-start_train, np.mean(losses)))
+                model.eval()
+                if it % 25 == 0 and it != 0:
+                    with torch.no_grad():
+                        logger.info("Validation:")
+                        valid_metrics = self.evaluate(model, d.valid_data)
+                
+                    h1 = valid_metrics['h1']
 
-            #     trial.report(h1, it)
-            #     if trial.should_prune():
-            #         raise optuna.exceptions.TrialPruned()
-            with torch.no_grad():
-                logger.info("Validation:")
-                valid_metrics = self.evaluate(model, d.valid_data)
-        
-            h1 = valid_metrics['h1']
-
-            trial.report(h1, it)
-            if trial.should_prune():
-                raise optuna.exceptions.TrialPruned()
+                    trial.report(h1, it)
+                    if trial.should_prune():
+                        raise optuna.exceptions.TrialPruned()
+            except:
+                continue
         return h1
+
+
+            # with torch.no_grad():
+            #     logger.info("Validation:")
+            #     valid_metrics = self.evaluate(model, d.valid_data)
+        
+            # h1 = valid_metrics['h1']
+
+            # trial.report(h1, it)
+            # if trial.should_prune():
+            #     raise optuna.exceptions.TrialPruned()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="FB15k-237", nargs="?",
                     help="Which dataset to use: FB15k, FB15k-237, WN18 or WN18RR.")
-    parser.add_argument("--num_iterations", type=int, default=10, nargs="?",
+    parser.add_argument("--num_iterations", type=int, default=500, nargs="?",
                     help="Number of iterations.")
     parser.add_argument("--batch_size", type=int, default=128, nargs="?",
                     help="Batch size.")
