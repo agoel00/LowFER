@@ -132,7 +132,15 @@ class Experiment:
         train_data_idxs = self.get_data_idxs(d.train_data)
         logger.info("Number of training data points: %d" % len(train_data_idxs))
         
-        model = LowFER(d, self.ent_vec_dim, self.rel_vec_dim, **self.kwargs)
+        # model = LowFER(d, self.ent_vec_dim, self.rel_vec_dim, **self.kwargs)
+        model = LowFER(
+            d, d1, d2,
+            input_dropout,
+            hidden_dropout1,
+            hidden_dropout2,
+            k,
+            subspace
+        )
         if self.cuda:
             if self.n_gpu > 1:
                 model = torch.nn.DataParallel(model)
