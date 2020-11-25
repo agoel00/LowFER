@@ -43,7 +43,7 @@ class Experiment:
         self.device = torch.device("cuda") if cuda else None
         self.output_dir = output_dir
         self.kwargs = {"input_dropout": input_dropout, "hidden_dropout1": hidden_dropout1,
-                       "hidden_dropout2": hidden_dropout2, "k": k}
+                       "hidden_dropout2": hidden_dropout2, "k": k, "subspace": subspace}
     
     def get_data_idxs(self, data):
         data_idxs = [(self.entity_idxs[data[i][0]], self.relation_idxs[data[i][1]], \
@@ -134,12 +134,12 @@ class Experiment:
         
         # model = LowFER(d, self.ent_vec_dim, self.rel_vec_dim, **self.kwargs)
         model = LowFER(
-            d, d1, d2,
-            input_dropout,
-            hidden_dropout1,
-            hidden_dropout2,
-            k,
-            subspace
+            d, self.ent_vec_dim, self.rel_vec_dim,
+            self.kwargs['input_dropout'],
+            self.kwargs['hidden_dropout1'],
+            self.kwargs['hidden_dropout2'],
+            self.kwargs['k'],
+            self.kwargs['subspace']
         )
         if self.cuda:
             if self.n_gpu > 1:
