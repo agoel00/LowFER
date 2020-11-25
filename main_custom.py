@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import time
 from collections import defaultdict
-from model_conv_5nov import *
+from model_cross_attention import *
 from torch.optim.lr_scheduler import ExponentialLR
 import argparse
 import logging
