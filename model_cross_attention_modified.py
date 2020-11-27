@@ -50,7 +50,7 @@ class LowFER(nn.Module):
         # e1_aug = e1_bar * alpha_e1
         # r_aug = r_bar * alpha_r
         ## MFB
-        x = (torch.mm(e1, self.U1) * alpha_e1) * (torch.mm(r, self.V1) * alpha_r)
+        x = torch.mm(e1*alpha_e1, self.U1) * torch.mm(r * alpha_r, self.V1)
         x = self.hidden_dropout1(x)
         x = x.view(-1, self.o, self.k)
         x = x.sum(-1)
