@@ -18,7 +18,7 @@ logger = logging.getLogger(__file__)
 
 def add_logging_handlers(params, dir_name="logs"):
     os.makedirs(dir_name, exist_ok=True)
-    log_file = os.path.join(dir_name, params + "_clowfer.log")
+    log_file = os.path.join(dir_name, params + "_clowfer_modified.log")
     fh = logging.FileHandler(log_file)
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s -   %(message)s', '%m/%d/%Y %H:%M:%S'))
     global logger
