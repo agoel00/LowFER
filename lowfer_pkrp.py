@@ -33,26 +33,33 @@ class LowFER(nn.Module):
             (-1,0,1), size=(d1,self.p),
             p=[1./(2*self.s), 1-1./self.s, 1./(2*self.s)]
         )
-        self.register_buffer('projMatrix', torch.from_numpy(projectionMatrix))
+        proj = torch.from_numpy(projectionMatrix).float().to('cuda:0')
+        self.register_buffer('projMatrix', proj)
 
         self.idx = [torch.randint(0, high=self.p, size=(self.k, self.t, 2))]
 
-        self.factor = 1./torch.sqrt(k*t)
+        # self.factor = 1./torch.sqrt(torch.Tensor(self.k*self.t))
+        self.factor = 1./np.sqrt(float(self.k*self.t))
+        self.factor = torch.FloatTensor([self.factor]).to('cuda:0')
     
     def init(self):
         nn.init.xavier_normal_(self.E.weight.data)
         nn.init.xavier_normal_(self.R.weight.data)
 
     def _transform(self, batch, h, r):
-        y = torch.zeros(batch, self.k)
+        y = torch.zeros(batch, self.k).to('cuda:0')
 
         for b in range(batch):
             for k in range(self.k):
                 for i in range(self.t):
-                    r1 = self.projMatrix[self.idx[k, i, 0]]
-                    r2 = self.projMatrix[self.idx[k, i, 1]]
-                    y[b, k] += torch.dot(h, r1) * torch.dot(r, r2)
-                y[b, k] *= self.factor
+                    r1 = self.projMatrix[self.idx[k][i][0]]
+                    r2 = self.projMatrix[self.idx[k][i][1]]
+                    y[b, k] += torch.dot(h[b].view(-1), r1.view(-1)) * torch.dot(r[b].view(-1), r2.view(-1))
+                y[b, k] = y[b,k] * self.factor
+                # print(y[b,k])
+                # print(self.factor)
+                break
+
 
         return y 
 
@@ -74,6 +81,8 @@ class LowFER(nn.Module):
         # x = x.sum(-1)
         x = torch.mul(torch.sign(x), torch.sqrt(torch.abs(x) + 1e-12))
         x = nn.functional.normalize(x, p=2, dim=-1)
+        # print(x.shape)
+        # print(self.E.weight.shape)
         x = self.bn1(x)
         x = self.hidden_dropout2(x)
         x = torch.mm(x, self.E.weight.transpose(1, 0))
