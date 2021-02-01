@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import time
 from collections import defaultdict
-from model import *
+from lowfer_pkrp import *
 from torch.optim.lr_scheduler import ExponentialLR
 import argparse
 import logging
@@ -18,7 +18,7 @@ logger = logging.getLogger(__file__)
 
 def add_logging_handlers(params, dir_name="logs"):
     os.makedirs(dir_name, exist_ok=True)
-    log_file = os.path.join(dir_name, params + "_crossselfAttention_v2.log")
+    log_file = os.path.join(dir_name, params + "_pkrp.log")
     fh = logging.FileHandler(log_file)
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s -   %(message)s', '%m/%d/%Y %H:%M:%S'))
     global logger
@@ -30,7 +30,7 @@ class Experiment:
     def __init__(self, learning_rate=0.0005, ent_vec_dim=200, rel_vec_dim=200, 
                  num_iterations=500, batch_size=128, decay_rate=0., cuda=False, 
                  input_dropout=0.3, hidden_dropout1=0.4, hidden_dropout2=0.5,
-                 label_smoothing=0., k=30, output_dir=None):
+                 label_smoothing=0., k=30, output_dir=None, pretrained_ents=None, pretrained_rels=None):
         self.learning_rate = learning_rate
         self.ent_vec_dim = ent_vec_dim
         self.rel_vec_dim = rel_vec_dim
@@ -43,7 +43,8 @@ class Experiment:
         self.device = torch.device("cuda") if cuda else None
         self.output_dir = output_dir
         self.kwargs = {"input_dropout": input_dropout, "hidden_dropout1": hidden_dropout1,
-                       "hidden_dropout2": hidden_dropout2, "k": k}
+                       "hidden_dropout2": hidden_dropout2, "k": k, "pretrained_ents": pretrained_ents, 
+                       "pretrained_rels": pretrained_rels}
     
     def get_data_idxs(self, data):
         data_idxs = [(self.entity_idxs[data[i][0]], self.relation_idxs[data[i][1]], \
@@ -142,20 +143,20 @@ class Experiment:
         else:
            model.init()
         #https://discuss.pytorch.org/t/different-learning-rate-for-a-specific-layer/33670/4
-        manifold_list = ['U.weight', 'V.weight']
-        manifold_params_list = list(filter(lambda kv: kv[0] in manifold_list, model.named_parameters()))
-        base_params_list = list(filter(lambda kv: kv[0] not in manifold_list, model.named_parameters()))
-        manifold_params = []
-        base_params = []
-        for name, params in manifold_params_list:
-            manifold_params.append(params)
-        for name, params in base_params_list:
-            base_params.append(params)
-        # opt = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
-        opt = torch.optim.Adam(
-            [{'params': base_params}, {'params': manifold_params, "lr": 0.00005}],
-            lr=self.learning_rate
-        )
+        # manifold_list = ['U.weight', 'V.weight']
+        # manifold_params_list = list(filter(lambda kv: kv[0] in manifold_list, model.named_parameters()))
+        # base_params_list = list(filter(lambda kv: kv[0] not in manifold_list, model.named_parameters()))
+        # manifold_params = []
+        # base_params = []
+        # for name, params in manifold_params_list:
+            # manifold_params.append(params)
+        # for name, params in base_params_list:
+            # base_params.append(params)
+        opt = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
+        # opt = torch.optim.Adam(
+            # [{'params': base_params}, {'params': manifold_params, "lr": 0.00005}],
+            # lr=self.learning_rate
+        # )
         if self.decay_rate:
             scheduler = ExponentialLR(opt, self.decay_rate)
         
@@ -235,6 +236,9 @@ if __name__ == '__main__':
                     help="Dropout after the second hidden layer.")
     parser.add_argument("--label_smoothing", type=float, default=0.1, nargs="?",
                     help="Amount of label smoothing.")
+    parser.add_argument("--pretrained_ents")
+    parser.add_argument("--pretrained_rels")
+
     args = parser.parse_args()
     params = "{}_lr_{}_dr_{}_e_{}_r_{}_k_{}_id_{}_hd1_{}_hd2_{}_ls_{}".format(
         args.dataset, args.lr, args.dr, args.edim, args.rdim, 
@@ -257,5 +261,5 @@ if __name__ == '__main__':
                             decay_rate=args.dr, ent_vec_dim=args.edim, rel_vec_dim=args.rdim, cuda=args.cuda,
                             input_dropout=args.input_dropout, hidden_dropout1=args.hidden_dropout1, 
                             hidden_dropout2=args.hidden_dropout2, label_smoothing=args.label_smoothing, k=args.k, 
-                            output_dir=output_dir)
+                            output_dir=output_dir, pretrained_ents=args.pretrained_ents, pretrained_rels=args.pretrained_rels)
     experiment.train_and_eval()
